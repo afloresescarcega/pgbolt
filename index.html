@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PgBolt — Interactive PostgreSQL Tutorial</title>
+<meta name="description" content="SQLBolt-style interactive lessons for the PostgreSQL features plain SQL tutorials skip. Real Postgres runs in your browser.">
+<style>
+:root{
+--paper:#F6F7FA;--ink:#152033;--muted:#5F6B7E;--accent:#2F5F8F;--accent-ink:#FFFFFF;--accent-soft:#DCE8F5;
+--line:#DFE3EA;--card:#FFFFFF;--mono-bg:#0F1A2A;--mono-fg:#E2E8F0;--null:#94A3B8;
+--ok-bg:#DCFCE7;--ok-fg:#14532D;--ok-line:#86EFAC;--err-bg:#FEF3C7;--err-fg:#78350F;--err-line:#FCD34A;
+--pgerr-bg:#FEE2E2;--pgerr-fg:#7F1D1D;--pgerr-line:#FCA5A5;
+--radius:10px;
+--sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]){
+--paper:#0D1522;--ink:#E6ECF3;--muted:#93A1B5;--card:#17223A;--line:#2A3854;
+--accent:#7FB2E5;--accent-ink:#0D1522;--accent-soft:#1D3352;--mono-bg:#070D18;--null:#64748B;
+--ok-bg:#0F2E1C;--ok-fg:#BBF7D0;--ok-line:#166534;--err-bg:#33260A;--err-fg:#FDE68A;--err-line:#92400E;
+--pgerr-bg:#3A1414;--pgerr-fg:#FECACA;--pgerr-line:#991B1B;
+}}
+:root[data-theme="dark"]{
+--paper:#0D1522;--ink:#E6ECF3;--muted:#93A1B5;--card:#17223A;--line:#2A3854;
+--accent:#7FB2E5;--accent-ink:#0D1522;--accent-soft:#1D3352;--mono-bg:#070D18;--null:#64748B;
+--ok-bg:#0F2E1C;--ok-fg:#BBF7D0;--ok-line:#166534;--err-bg:#33260A;--err-fg:#FDE68A;--err-line:#92400E;
+--pgerr-bg:#3A1414;--pgerr-fg:#FECACA;--pgerr-line:#991B1B;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55}
+a{color:var(--accent)}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--card)}
+.logo{font-weight:700;font-size:18px;letter-spacing:-.02em}
+.logo b{color:var(--accent)}
+.badge{font-size:12px;background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:999px;font-weight:600}
+.status{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--err-line)}
+.dot.ready{background:#22C55E}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 53px)}
+.sidebar{border-right:1px solid var(--line);background:var(--card);padding:12px 10px}
+.sidebar h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 10px 4px}
+.sidebar h3:first-child{margin-top:4px}
+.lesson-link{display:flex;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500}
+.lesson-link:hover{background:var(--accent-soft)}
+.lesson-link.active{background:var(--accent);color:var(--accent-ink)}
+.lesson-link .n{font-family:var(--mono);font-size:12px;opacity:.7;width:20px;flex:0 0 auto}
+.lesson-link .tick{margin-left:auto;color:var(--accent)}
+.lesson-link.active .tick{color:var(--accent-ink)}
+.main{padding:24px;max-width:1000px;min-width:0}
+.main h1{font-size:28px;letter-spacing:-.02em;margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 16px;max-width:65ch}
+.prose{max-width:72ch}
+.prose code,.q{font-family:var(--mono);background:var(--accent-soft);padding:1px 6px;border-radius:6px;font-size:.88em}
+.pgonly{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:2px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
+.card h2{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.tname{font-family:var(--mono);font-size:13px;font-weight:500;margin:10px 0 4px;color:var(--ink)}
+.tname:first-of-type{margin-top:0}
+.scroll{overflow-x:auto;max-height:340px;overflow-y:auto}
+pre{margin:0;overflow-x:auto;background:var(--mono-bg);color:var(--mono-fg);padding:12px;border-radius:8px;font-family:var(--mono);font-size:13px;line-height:1.5;white-space:pre}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;position:sticky;top:0;background:var(--card)}
+th small{display:block;font-weight:400;font-family:var(--mono);font-size:10px;opacity:.8}
+td{font-family:var(--mono);font-size:12.5px}
+td.null{color:var(--null);font-style:italic}
+.tasklist{font-size:15px;background:var(--accent-soft);border:1px dashed var(--accent);border-radius:8px;padding:12px 14px;margin:14px 0;max-width:72ch}
+.practice-card{border-color:var(--accent);border-width:2px}
+.practice-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
+.editor-wrap{display:grid;gap:10px}
+textarea{width:100%;min-height:150px;font-family:var(--mono);font-size:14px;line-height:1.5;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--mono-bg);color:var(--mono-fg);resize:vertical;tab-size:2}
+textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+button{font-family:var(--sans);font-weight:600;border-radius:8px;border:1px solid var(--line);padding:8px 14px;cursor:pointer;background:var(--card);color:var(--ink);font-size:14px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.55;cursor:wait}
+button.ghost{background:transparent}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#next.is-ready{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.feedback{padding:10px 12px;border-radius:8px;font-size:14px;display:none;white-space:pre-wrap}
+.feedback.ok{display:block;background:var(--ok-bg);color:var(--ok-fg);border:1px solid var(--ok-line)}
+.feedback.err{display:block;background:var(--err-bg);color:var(--err-fg);border:1px solid var(--err-line)}
+.feedback.pgerr{display:block;background:var(--pgerr-bg);color:var(--pgerr-fg);border:1px solid var(--pgerr-line);font-family:var(--mono);font-size:13px}
+.hint{font-size:13px;color:var(--muted)}
+kbd{font-family:var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;background:var(--card);font-size:12px}
+.res-head{display:flex;align-items:baseline;gap:10px;margin-top:6px}
+.res-head h2{margin:0}
+#verify-wrap{display:none;margin-top:10px}
+@media(max-width:900px){
+ .layout{grid-template-columns:1fr}
+ .sidebar{display:flex;align-items:center;gap:4px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px}
+ .sidebar h3{flex:0 0 auto;margin:0 4px 0 10px}
+ .lesson-link{flex:0 0 auto;width:auto}
+ .grid2{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+ .topbar{padding:10px 16px;flex-wrap:wrap}
+ .main{padding:18px 16px 32px}
+ .toolbar button{flex:1 1 calc(50% - 8px);min-height:42px}
+}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<body>
+<div class="topbar">
+<div class="logo"><b>Pg</b>Bolt</div>
+<span class="badge">PostgreSQL • interactive</span>
+<span class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="pg-status">Starting PostgreSQL…</span></span>
+</div>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Lessons"></nav>
+<main class="main">
+<h1 id="lesson-title"></h1>
+<p class="sub" id="subtitle"></p>
+<div class="prose" id="prose"></div>
+<div class="tasklist" id="task" role="region" aria-label="Exercise"></div>
+<div class="grid2">
+<div class="card"><h2>Tables in this lesson</h2><div class="scroll" id="tables"><p class="hint">Loading data…</p></div></div>
+<div class="card"><h2>Syntax reference</h2><pre id="ref"></pre></div>
+</div>
+<div class="card practice-card">
+<div class="practice-heading"><h2>Your turn</h2><span class="hint">Real PostgreSQL. Data resets on every run.</span></div>
+<div class="editor-wrap">
+<label class="hint" for="editor">Query editor</label>
+<textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+<div class="toolbar" role="group" aria-label="Query actions">
+<button class="primary" id="run" type="button" disabled>Run ▶</button>
+<button class="ghost" id="reset" type="button">Reset</button>
+<button class="ghost" id="solution" type="button">Show solution</button>
+<button class="ghost" id="next" type="button">Next lesson →</button>
+</div>
+<div class="feedback" id="feedback" role="status" aria-live="polite" tabindex="-1"></div>
+<div class="res-head"><h2>Results</h2><span class="hint" id="count"></span></div>
+<div class="scroll"><table id="results"></table></div>
+<div id="verify-wrap"><div class="res-head"><h2>Table state after your statement</h2></div><p class="hint" id="verify-sql" style="margin:2px 0 6px"></p><div class="scroll"><table id="verify"></table></div></div>
+</div>
+</div>
+<p class="hint" style="margin-top:16px">Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> to run. The checker compares your <em>result rows</em> with the solution's, not your query text, so any correct query passes. Column names don't matter. Row order only matters when the task asks for it.</p>
+</main>
+</div>
+<script type="module">
+import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.5.8/dist/index.js';
+
+/*SEED-START*/
+const SEED = `
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+RESET ALL;
+SET TimeZone TO 'UTC';
+
+CREATE TABLE customers (
+  id         int GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  name       text NOT NULL,
+  email      text NOT NULL UNIQUE,
+  city       text,
+  tags       text[],
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO customers (name, email, city, tags, created_at) VALUES
+ ('Ana Torres',   'ana@gmail.com',           'Austin',  '{vip,newsletter}', '2026-01-05 10:00'),
+ ('Ben Okafor',   'Ben.Okafor@GMAIL.com',    'Denver',  '{newsletter}',     '2026-01-18 15:30'),
+ ('Chloé Martin', 'chloe@proton.me',         'Austin',  '{}',               '2026-02-02 09:10'),
+ ('Dev Patel',    'dev.patel99@outlook.com', 'Seattle', '{vip}',            '2026-02-14 20:45'),
+ ('Eli Brooks',   'eli@gmail.com',           NULL,      '{beta,vip}',       '2026-03-01 08:00'),
+ ('Fatima Zahra', 'fatima.z@Proton.me',      'Denver',  '{beta}',           '2026-03-01 12:00'),
+ ('Gus Lee',      'gus2026@yahoo.com',       NULL,      NULL,               '2026-03-01 18:20');
+
+CREATE TABLE products (
+  id       int GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  name     text NOT NULL,
+  category text NOT NULL,
+  price    numeric(8,2) NOT NULL,
+  attrs    jsonb NOT NULL DEFAULT '{}'
+);
+INSERT INTO products (name, category, price, attrs) VALUES
+ ('Espresso Beans 1kg',   'coffee', 24.00, '{"roast":"dark","origin":"Brazil","organic":false}'),
+ ('Light Roast Ethiopia', 'coffee', 19.50, '{"roast":"light","origin":"Ethiopia","organic":true}'),
+ ('Decaf House Blend',    'coffee', 16.00, '{"roast":"medium","organic":false}'),
+ ('Pour-Over Kettle',     'gear',   45.00, '{"color":"black","material":"steel"}'),
+ ('Burr Grinder',         'gear',   89.00, '{"color":"silver","settings":40}'),
+ ('Paper Filters (100)',  'gear',    6.50, '{"material":"paper"}'),
+ ('Ceramic Mug',          'merch',  14.00, '{"color":"white","sizes":["S","M","L"]}'),
+ ('Tote Bag',             'merch',  12.00, '{"color":"black"}'),
+ ('Matcha Tin',           'tea',    22.00, '{"organic":true,"origin":"Japan"}');
+
+CREATE TABLE orders (
+  id          int GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  customer_id int NOT NULL REFERENCES customers(id),
+  status      text NOT NULL,
+  ordered_at  timestamptz NOT NULL
+);
+INSERT INTO orders (customer_id, status, ordered_at) VALUES
+ (1, 'shipped',   '2026-03-02 09:15'),
+ (2, 'shipped',   '2026-03-02 14:40'),
+ (1, 'delivered', '2026-03-04 11:05'),
+ (4, 'cancelled', '2026-03-04 16:20'),
+ (3, 'shipped',   '2026-03-07 10:00'),
+ (5, 'pending',   '2026-03-07 18:30'),
+ (1, 'pending',   '2026-03-08 08:45'),
+ (6, 'delivered', '2026-03-08 13:10'),
+ (4, 'shipped',   '2026-03-08 19:55'),
+ (2, 'delivered', '2026-03-05 12:00');
+
+CREATE TABLE order_items (
+  order_id   int NOT NULL REFERENCES orders(id),
+  product_id int NOT NULL REFERENCES products(id),
+  qty        int NOT NULL,
+  PRIMARY KEY (order_id, product_id)
+);
+INSERT INTO order_items VALUES
+ (1,2,1),(1,7,1),(2,1,1),(2,6,2),(3,5,1),(4,4,1),(5,2,1),(5,3,1),
+ (6,9,2),(7,1,1),(7,8,1),(8,7,4),(9,5,1),(9,6,1),(10,3,2);
+
+CREATE TABLE employees (
+  id         int GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  name       text NOT NULL,
+  title      text NOT NULL,
+  manager_id int REFERENCES employees(id)
+);
+INSERT INTO employees (name, title, manager_id) VALUES
+ ('Rosa Diaz', 'CEO',            NULL),
+ ('Sam Kim',   'Head of Ops',    1),
+ ('Priya Rao', 'Head of Coffee', 1),
+ ('Tom Hale',  'Warehouse Lead', 2),
+ ('Lin Wu',    'Packer',         4),
+ ('Omar Said', 'Packer',         4),
+ ('Jo Park',   'Roaster',        3);
+`;
+/*SEED-END*/
+
+/*LESSONS-START*/
+const LESSONS = [
+// ───────── Text & types
+{nav:"ILIKE", section:"Text & types", title:"ILIKE: case-insensitive matching",
+ sub:"LIKE is case-sensitive in Postgres. ILIKE isn't.",
+ prose:`<p>In some databases <span class="q">LIKE</span> ignores case. In Postgres it doesn't, so <span class="q">'Ben@GMAIL.com' LIKE '%gmail%'</span> is false. Postgres adds <span class="q">ILIKE</span><span class="pgonly">pg</span> for case-insensitive matching. It also has operator spellings: <span class="q">~~</span> for LIKE and <span class="q">~~*</span> for ILIKE.</p><p>The wildcards are the same as LIKE: <span class="q">%</span> matches any run of characters and <span class="q">_</span> matches exactly one.</p>`,
+ task:"<b>Exercise:</b> Find every customer with a Gmail address, whatever the capitalization. Show <code>name</code> and <code>email</code>.",
+ ref:"WHERE email LIKE  '%@gmail.com'   -- case-sensitive\nWHERE email ILIKE '%@gmail.com'   -- any case\nWHERE name  NOT ILIKE 'a%'",
+ tables:["customers"],
+ starter:"SELECT name, email\nFROM customers\nWHERE email LIKE '%@gmail.com';",
+ solution:"SELECT name, email\nFROM customers\nWHERE email ILIKE '%@gmail.com';"},
+
+{nav:"Regex ~", section:"Text & types", title:"Regex: ~, ~* and substring()",
+ sub:"POSIX regular expressions are built in. No extension needed.",
+ prose:`<p><span class="q">~</span><span class="pgonly">pg</span> tests a regex match. <span class="q">~*</span> is the case-insensitive version, and <span class="q">!~</span> / <span class="q">!~*</span> negate them. Example: <span class="q">email ~ '\\d'</span> matches any email containing a digit.</p><p>To extract part of a string, <span class="q">substring(col FROM 'pattern')</span> returns the first capture group. Related functions: <span class="q">regexp_replace()</span>, <span class="q">regexp_match()</span> and <span class="q">split_part()</span>.</p>`,
+ task:"<b>Exercise:</b> For customers whose email contains a digit, show <code>name</code> and the email's domain (everything after <code>@</code>) in lowercase.",
+ ref:"WHERE email ~  '\\d'          -- has a digit\nWHERE email ~* '^[a-z]+@'     -- case-insensitive\nsubstring(email FROM '@(.+)$') -- capture group\nlower(text), upper(text)\nsplit_part(email, '@', 2)",
+ tables:["customers"],
+ starter:"SELECT name, email\nFROM customers\nWHERE email ~ '';",
+ solution:"SELECT name, lower(substring(email FROM '@(.+)$')) AS domain\nFROM customers\nWHERE email ~ '\\d';"},
+
+{nav:"Casting ::", section:"Text & types", title:"Casting with :: and dates",
+ sub:"Postgres's shorthand cast, and grouping timestamps by day.",
+ prose:`<p><span class="q">expr::type</span><span class="pgonly">pg</span> is Postgres shorthand for <span class="q">CAST(expr AS type)</span>. You'll see it constantly: <span class="q">'42'::int</span>, <span class="q">ordered_at::date</span>, <span class="q">'2026-03-01'::timestamptz</span>.</p><p>To bucket times, cast to <span class="q">date</span> or use <span class="q">date_trunc('week', ts)</span>. Interval arithmetic also works: <span class="q">ts + interval '7 days'</span>. In <span class="q">GROUP BY</span> and <span class="q">ORDER BY</span> you can refer to an output column by its position, as in <span class="q">GROUP BY 1</span>.</p>`,
+ task:"<b>Exercise:</b> Count orders per calendar day. Show the day (as a <code>date</code>) and the count, ordered by day.",
+ ref:"ordered_at::date\ndate_trunc('month', ordered_at)\nextract(dow FROM ordered_at)\nordered_at + interval '1 day'\nGROUP BY 1 ORDER BY 1",
+ tables:["orders"], ordered:true,
+ starter:"SELECT ordered_at, count(*)\nFROM orders\nGROUP BY ordered_at;",
+ solution:"SELECT ordered_at::date AS day, count(*) AS orders\nFROM orders\nGROUP BY 1\nORDER BY 1;"},
+
+{nav:"COALESCE & NULLs", section:"Text & types", title:"NULLs: COALESCE and IS DISTINCT FROM",
+ sub:"Turn NULLs into defaults, and compare values without NULL surprises.",
+ prose:`<p><span class="q">COALESCE(a, b, …)</span> returns its first non-NULL argument. <span class="q">NULLIF(a, b)</span> goes the other way: it returns NULL when a = b, which is handy for avoiding divide-by-zero.</p><p>Comparing anything to NULL with <span class="q">=</span> or <span class="q">&lt;&gt;</span> gives NULL, not true or false. <span class="q">a IS DISTINCT FROM b</span> treats NULL as an ordinary value, so <span class="q">city IS DISTINCT FROM 'Austin'</span> also includes the NULL cities.</p>`,
+ task:"<b>Exercise:</b> List every customer whose city is not Austin, <em>including</em> customers with no city. Show <code>name</code> and the city, with <code>'Unknown'</code> in place of NULL.",
+ ref:"COALESCE(city, 'Unknown')\nNULLIF(qty, 0)\nWHERE city <> 'Austin'                -- drops NULLs!\nWHERE city IS DISTINCT FROM 'Austin'  -- keeps them",
+ tables:["customers"],
+ starter:"SELECT name, city\nFROM customers\nWHERE city <> 'Austin';",
+ solution:"SELECT name, COALESCE(city, 'Unknown') AS city\nFROM customers\nWHERE city IS DISTINCT FROM 'Austin';"},
+
+// ───────── Aggregates
+{nav:"DISTINCT ON", section:"Aggregates", title:"DISTINCT ON: first row per group",
+ sub:"The classic “latest X per Y” query in one line.",
+ prose:`<p><span class="q">SELECT DISTINCT ON (key) …</span><span class="pgonly">pg</span> keeps only the <em>first</em> row for each distinct <span class="q">key</span>. The <span class="q">ORDER BY</span> decides which row comes first, and it has to start with the same key.</p><p>So <span class="q">DISTINCT ON (customer_id) … ORDER BY customer_id, ordered_at DESC</span> returns each customer's newest order. Other databases need a window function or a self-join for this.</p>`,
+ task:"<b>Exercise:</b> For each customer who has orders, show their most recent order: <code>customer_id</code>, order <code>id</code>, and <code>ordered_at</code>, ordered by customer_id.",
+ ref:"SELECT DISTINCT ON (customer_id) customer_id, id, ordered_at\nFROM orders\nORDER BY customer_id, ordered_at DESC",
+ tables:["orders"], ordered:true,
+ starter:"SELECT customer_id, id, ordered_at\nFROM orders\nORDER BY customer_id, ordered_at DESC;",
+ solution:"SELECT DISTINCT ON (customer_id) customer_id, id, ordered_at\nFROM orders\nORDER BY customer_id, ordered_at DESC;"},
+
+{nav:"FILTER", section:"Aggregates", title:"FILTER: conditional aggregates",
+ sub:"Several differently-filtered counts in a single pass.",
+ prose:`<p>Add <span class="q">FILTER (WHERE …)</span> after any aggregate and it only sees the rows that match. This is the standard-SQL clause, and Postgres is one of the few databases that implements it. Elsewhere you'd write <span class="q">SUM(CASE WHEN … THEN 1 ELSE 0 END)</span>.</p><p><span class="q">count(*) FILTER (WHERE status = 'pending')</span> sits next to the plain <span class="q">count(*)</span> in the same <span class="q">GROUP BY</span>.</p>`,
+ task:"<b>Exercise:</b> One row per <code>customer_id</code>: total number of orders, and how many are <code>shipped</code> or <code>delivered</code>. Order by customer_id.",
+ ref:"count(*) FILTER (WHERE status = 'pending')\nsum(qty)  FILTER (WHERE qty > 1)\nstatus IN ('shipped', 'delivered')",
+ tables:["orders"], ordered:true,
+ starter:"SELECT customer_id, count(*) AS total\nFROM orders\nGROUP BY customer_id\nORDER BY customer_id;",
+ solution:"SELECT customer_id,\n       count(*) AS total,\n       count(*) FILTER (WHERE status IN ('shipped','delivered')) AS fulfilled\nFROM orders\nGROUP BY customer_id\nORDER BY customer_id;"},
+
+{nav:"string_agg", section:"Aggregates", title:"string_agg and array_agg",
+ sub:"Collapse a group into a single list.",
+ prose:`<p><span class="q">string_agg(expr, ', ')</span> joins a group's values into one string. <span class="q">array_agg(expr)</span><span class="pgonly">pg</span> builds a real array from them.</p><p>Both take their own <span class="q">ORDER BY</span> inside the parentheses, which controls the order of the list: <span class="q">string_agg(name, ', ' ORDER BY name)</span>.</p>`,
+ task:"<b>Exercise:</b> For each product <code>category</code>, list its product names alphabetically in one comma-separated string (<code>', '</code>). Order by category.",
+ ref:"string_agg(name, ', ' ORDER BY name)\narray_agg(price ORDER BY price DESC)\narray_agg(DISTINCT city)",
+ tables:["products"], ordered:true,
+ starter:"SELECT category, count(*)\nFROM products\nGROUP BY category\nORDER BY category;",
+ solution:"SELECT category, string_agg(name, ', ' ORDER BY name) AS products\nFROM products\nGROUP BY category\nORDER BY category;"},
+
+// ───────── Arrays & JSON
+{nav:"Arrays", section:"Arrays & JSONB", title:"Arrays: ANY and @>",
+ sub:"A column can hold a list. Here's how to query one.",
+ prose:`<p>Every type has an array form: <span class="q">text[]</span>, <span class="q">int[]</span>, and so on. Literals look like <span class="q">'{vip,beta}'</span> or <span class="q">ARRAY['vip','beta']</span>.</p><p>To check membership use <span class="q">'vip' = ANY(tags)</span>. Containment is <span class="q">tags @&gt; ARRAY['vip']</span> ("contains all of"), and overlap is <span class="q">tags &amp;&amp; ARRAY['vip','beta']</span> ("shares any"). <span class="q">cardinality(tags)</span> counts the elements. Arrays are 1-indexed, so <span class="q">tags[1]</span> is the first element.</p>`,
+ task:"<b>Exercise:</b> Find customers tagged <code>vip</code>. Show <code>name</code> and how many tags they have.",
+ ref:"'vip' = ANY(tags)\ntags @> ARRAY['vip']\ntags && ARRAY['vip','beta']\ncardinality(tags)\ntags[1]",
+ tables:["customers"],
+ starter:"SELECT name, tags\nFROM customers\nWHERE ;",
+ solution:"SELECT name, cardinality(tags) AS n_tags\nFROM customers\nWHERE 'vip' = ANY(tags);"},
+
+{nav:"unnest", section:"Arrays & JSONB", title:"unnest: arrays into rows",
+ sub:"Turn one row with an array into one row per element.",
+ prose:`<p><span class="q">unnest(tags)</span> is a <em>set-returning function</em>: it emits one row per element. Put it in <span class="q">FROM</span> next to the table and Postgres joins each customer to their own tags (an implicit LATERAL join).</p><p><span class="q">FROM customers, unnest(tags) AS tag</span>. Once the tags are rows you can group, count and filter them like any other column.</p>`,
+ task:"<b>Exercise:</b> Count customers per tag. Show the tag and its count, most common first, with ties broken alphabetically.",
+ ref:"SELECT tag, count(*)\nFROM customers, unnest(tags) AS tag\nGROUP BY tag\n\nunnest(ARRAY[1,2,3]) WITH ORDINALITY",
+ tables:["customers"], ordered:true,
+ starter:"SELECT tag\nFROM customers, unnest(tags) AS tag;",
+ solution:"SELECT tag, count(*) AS customers\nFROM customers, unnest(tags) AS tag\nGROUP BY tag\nORDER BY count(*) DESC, tag;"},
+
+{nav:"JSONB ->>", section:"Arrays & JSONB", title:"JSONB: -> ->> and @>",
+ sub:"Schemaless data inside a relational table.",
+ prose:`<p><span class="q">jsonb</span><span class="pgonly">pg</span> stores JSON in a binary, indexable form. <span class="q">attrs -&gt; 'origin'</span> returns a jsonb value, and <span class="q">attrs -&gt;&gt; 'origin'</span> returns <em>text</em>. Use <span class="q">-&gt;&gt;</span> when you want to compare or display the value.</p><p>Containment, <span class="q">attrs @&gt; '{"organic": true}'</span>, matches rows whose JSON includes that key/value. A GIN index makes it fast.</p>`,
+ task:"<b>Exercise:</b> List organic products. Show <code>name</code> and the <code>origin</code> from <code>attrs</code> as text.",
+ ref:"attrs -> 'origin'            -- jsonb  \"Japan\"\nattrs ->> 'origin'           -- text   Japan\n(attrs ->> 'settings')::int\nattrs @> '{\"organic\": true}'\nattrs #>> '{sizes,0}'        -- path",
+ tables:["products"],
+ starter:"SELECT name, attrs\nFROM products\nWHERE ;",
+ solution:"SELECT name, attrs ->> 'origin' AS origin\nFROM products\nWHERE attrs @> '{\"organic\": true}';"},
+
+{nav:"JSONB ? keys", section:"Arrays & JSONB", title:"JSONB: ? key exists",
+ sub:"Query by which keys a document has, not just their values.",
+ prose:`<p><span class="q">attrs ? 'color'</span> is true when the top-level key exists. Its siblings are <span class="q">?|</span> ("any of these keys") and <span class="q">?&amp;</span> ("all of these keys").</p><p>Postgres can also build JSON. <span class="q">jsonb_build_object('name', name)</span> makes an object, <span class="q">jsonb_agg(…)</span> collects rows into a JSON array, and <span class="q">jsonb_array_elements_text(attrs-&gt;'sizes')</span> unpacks an array back into rows.</p>`,
+ task:"<b>Exercise:</b> Show <code>name</code> and <code>color</code> (as text) for products that have a <code>color</code> key. Order by color, then name.",
+ ref:"attrs ? 'color'\nattrs ?| ARRAY['color','material']\nattrs ?& ARRAY['color','material']\njsonb_build_object('n', name)\njsonb_agg(name)",
+ tables:["products"], ordered:true,
+ starter:"SELECT name, attrs ->> 'color' AS color\nFROM products\nORDER BY 2, 1;",
+ solution:"SELECT name, attrs ->> 'color' AS color\nFROM products\nWHERE attrs ? 'color'\nORDER BY 2, 1;"},
+
+{nav:"generate_series", section:"Arrays & JSONB", title:"generate_series: fill the gaps",
+ sub:"Make rows from thin air, so empty days still show up.",
+ prose:`<p><span class="q">generate_series(start, stop, step)</span><span class="pgonly">pg</span> produces a sequence of numbers or timestamps. LEFT JOIN your data onto it and days with no activity come back as zeros instead of disappearing from the result.</p><p>Remember <span class="q">count(o.id)</span> counts non-NULL values, which gives 0 for unmatched days. <span class="q">count(*)</span> would give 1.</p>`,
+ task:"<b>Exercise:</b> Daily order counts from 2026-03-02 to 2026-03-08 inclusive, <em>including</em> days with zero orders. Show the day and count, ordered by day.",
+ ref:"generate_series(1, 5)\ngenerate_series('2026-03-02'::date,\n                '2026-03-08'::date,\n                interval '1 day') AS d\nLEFT JOIN orders o ON o.ordered_at::date = d::date",
+ tables:["orders"], ordered:true,
+ starter:"SELECT d::date AS day\nFROM generate_series('2026-03-02'::date, '2026-03-08'::date, interval '1 day') AS d;",
+ solution:"SELECT d::date AS day, count(o.id) AS orders\nFROM generate_series('2026-03-02'::date, '2026-03-08'::date, interval '1 day') AS d\nLEFT JOIN orders o ON o.ordered_at::date = d::date\nGROUP BY d\nORDER BY d;"},
+
+// ───────── Windows & CTEs
+{nav:"Window rank()", section:"Windows & CTEs", title:"Window functions: rank()",
+ sub:"Compute across related rows without collapsing them.",
+ prose:`<p>An aggregate collapses a group into one row. A <em>window function</em> keeps every row and adds a computed column next to it. <span class="q">rank() OVER (PARTITION BY category ORDER BY price DESC)</span> numbers the products within each category, starting again at 1 for every category.</p><p>Variants: <span class="q">row_number()</span> never ties, <span class="q">dense_rank()</span> leaves no gaps after ties, and <span class="q">sum(x) OVER (…)</span> gives running totals.</p>`,
+ task:"<b>Exercise:</b> Rank products by price within each category (most expensive = 1). Show <code>category</code>, <code>name</code>, <code>price</code>, and the rank.",
+ ref:"rank()       OVER (PARTITION BY category ORDER BY price DESC)\nrow_number() OVER (ORDER BY price)\nsum(price)   OVER (PARTITION BY category)\navg(price)   OVER w  …  WINDOW w AS (PARTITION BY category)",
+ tables:["products"],
+ starter:"SELECT category, name, price\nFROM products;",
+ solution:"SELECT category, name, price,\n       rank() OVER (PARTITION BY category ORDER BY price DESC) AS price_rank\nFROM products;"},
+
+{nav:"lag()", section:"Windows & CTEs", title:"lag(): compare with the previous row",
+ sub:"Time between events, change since last time.",
+ prose:`<p><span class="q">lag(col) OVER (ORDER BY …)</span> returns the value of <span class="q">col</span> from the previous row in the window. <span class="q">lead()</span> looks at the next row instead. The first row has no predecessor, so its lag is NULL.</p><p>Subtracting two timestamps gives an <span class="q">interval</span><span class="pgonly">pg</span>, for example <span class="q">2 days 01:50:00</span>.</p>`,
+ task:"<b>Exercise:</b> For customer 1's orders, show order <code>id</code>, <code>ordered_at</code>, and the time elapsed since their previous order.",
+ ref:"lag(ordered_at)  OVER (ORDER BY ordered_at)\nlead(ordered_at) OVER (PARTITION BY customer_id ORDER BY ordered_at)\nts - lag(ts) OVER (…)   -- interval",
+ tables:["orders"],
+ starter:"SELECT id, ordered_at\nFROM orders\nWHERE customer_id = 1;",
+ solution:"SELECT id, ordered_at,\n       ordered_at - lag(ordered_at) OVER (ORDER BY ordered_at) AS since_previous\nFROM orders\nWHERE customer_id = 1;"},
+
+{nav:"CTEs", section:"Windows & CTEs", title:"CTEs: WITH … AS",
+ sub:"Name an intermediate result and build on it step by step.",
+ prose:`<p><span class="q">WITH name AS (SELECT …) SELECT … FROM name</span> works like a variable for a query. It turns a deeply nested query into a series of readable steps.</p><p>Since PostgreSQL 12 the planner can inline simple CTEs, so they're usually free. Add <span class="q">AS MATERIALIZED</span> to force a CTE to be computed once.</p>`,
+ task:"<b>Exercise:</b> Compute each order's total (<code>qty × price</code>, joining <code>order_items</code> to <code>products</code>). Then return only the orders whose total is above the average order total. Show order id and total.",
+ ref:"WITH totals AS (\n  SELECT oi.order_id, sum(oi.qty * p.price) AS total\n  FROM order_items oi JOIN products p ON p.id = oi.product_id\n  GROUP BY oi.order_id\n)\nSELECT … FROM totals WHERE total > (SELECT avg(total) FROM totals)",
+ tables:["order_items","products"],
+ starter:"WITH totals AS (\n  SELECT oi.order_id, sum(oi.qty * p.price) AS total\n  FROM order_items oi\n  JOIN products p ON p.id = oi.product_id\n  GROUP BY oi.order_id\n)\nSELECT * FROM totals;",
+ solution:"WITH totals AS (\n  SELECT oi.order_id, sum(oi.qty * p.price) AS total\n  FROM order_items oi\n  JOIN products p ON p.id = oi.product_id\n  GROUP BY oi.order_id\n)\nSELECT order_id, total\nFROM totals\nWHERE total > (SELECT avg(total) FROM totals);"},
+
+{nav:"WITH RECURSIVE", section:"Windows & CTEs", title:"WITH RECURSIVE: walk a tree",
+ sub:"Org charts, category trees, graph traversal.",
+ prose:`<p>A recursive CTE has two parts joined by <span class="q">UNION ALL</span>. The <em>anchor</em> query picks the starting row(s). The <em>recursive</em> query joins the table back onto the CTE itself, and Postgres repeats it until no new rows come back.</p><p>Carry a counter such as <span class="q">depth + 1</span> along to track how deep each row is.</p>`,
+ task:"<b>Exercise:</b> List everyone in Sam Kim's reporting tree: Sam at depth 0, Sam's direct reports at depth 1, and so on down. Show <code>name</code> and <code>depth</code>.",
+ ref:"WITH RECURSIVE chain AS (\n  SELECT id, name, 0 AS depth\n  FROM employees WHERE name = 'Sam Kim'\n  UNION ALL\n  SELECT e.id, e.name, c.depth + 1\n  FROM employees e JOIN chain c ON e.manager_id = c.id\n)\nSELECT name, depth FROM chain",
+ tables:["employees"],
+ starter:"WITH RECURSIVE chain AS (\n  SELECT id, name, 0 AS depth\n  FROM employees WHERE name = 'Sam Kim'\n  UNION ALL\n  -- join employees onto chain here\n)\nSELECT name, depth FROM chain;",
+ solution:"WITH RECURSIVE chain AS (\n  SELECT id, name, 0 AS depth\n  FROM employees WHERE name = 'Sam Kim'\n  UNION ALL\n  SELECT e.id, e.name, c.depth + 1\n  FROM employees e\n  JOIN chain c ON e.manager_id = c.id\n)\nSELECT name, depth FROM chain;"},
+
+{nav:"LATERAL", section:"Windows & CTEs", title:"LATERAL: top-N per group",
+ sub:"A subquery that can see the current outer row, like a for-each loop.",
+ prose:`<p>A normal subquery in <span class="q">FROM</span> can't refer to the other tables in the same <span class="q">FROM</span>. A <span class="q">LATERAL</span> subquery can, so it runs once per outer row, much like a for-each loop. With <span class="q">ORDER BY … LIMIT n</span> inside, it's the cleanest way to write "top N per group".</p><p>Use <span class="q">LEFT JOIN LATERAL (…) ON true</span> to keep outer rows that have no matches.</p>`,
+ task:"<b>Exercise:</b> For every customer, show their <b>2 most recent</b> orders: customer <code>name</code>, order <code>id</code>, <code>ordered_at</code>. Customers with no orders must still appear, with NULLs.",
+ ref:"SELECT c.name, o.*\nFROM customers c\nLEFT JOIN LATERAL (\n  SELECT id, ordered_at FROM orders\n  WHERE customer_id = c.id\n  ORDER BY ordered_at DESC LIMIT 2\n) o ON true",
+ tables:["customers","orders"],
+ starter:"SELECT c.name, o.id, o.ordered_at\nFROM customers c\nJOIN orders o ON o.customer_id = c.id;",
+ solution:"SELECT c.name, o.id, o.ordered_at\nFROM customers c\nLEFT JOIN LATERAL (\n  SELECT id, ordered_at FROM orders\n  WHERE customer_id = c.id\n  ORDER BY ordered_at DESC\n  LIMIT 2\n) o ON true;"},
+
+// ───────── Writing data
+{nav:"RETURNING", section:"Writing data", title:"INSERT … RETURNING",
+ sub:"Get generated ids back without a second query.",
+ prose:`<p><span class="q">RETURNING</span><span class="pgonly">pg</span> works on INSERT, UPDATE and DELETE. It hands back the rows you just changed, including generated values such as identity ids and defaults. There's no need for a separate <span class="q">SELECT lastval()</span>.</p><p>The id column here is <span class="q">GENERATED BY DEFAULT AS IDENTITY</span>, the modern replacement for <span class="q">serial</span>. If you leave it out of the INSERT, Postgres assigns the next number.</p>`,
+ task:"<b>Exercise:</b> Insert a customer named <code>Hana Ito</code> with email <code>hana@icloud.com</code>, city <code>Portland</code>. Return the new <code>id</code> and <code>name</code>.",
+ ref:"INSERT INTO t (a, b) VALUES (1, 'x')\nRETURNING id, a;\n\nDELETE FROM t WHERE … RETURNING *;",
+ tables:["customers"],
+ starter:"INSERT INTO customers (name, email, city)\nVALUES ('Hana Ito', 'hana@icloud.com', 'Portland');",
+ solution:"INSERT INTO customers (name, email, city)\nVALUES ('Hana Ito', 'hana@icloud.com', 'Portland')\nRETURNING id, name;",
+ verify:"SELECT count(*) AS customers FROM customers"},
+
+{nav:"ON CONFLICT", section:"Writing data", title:"ON CONFLICT: upsert",
+ sub:"Insert, or update the existing row, atomically.",
+ prose:`<p><span class="q">INSERT … ON CONFLICT (col) DO UPDATE SET …</span><span class="pgonly">pg</span> updates the existing row when the insert would violate a unique constraint. Inside the <span class="q">SET</span>, <span class="q">EXCLUDED</span> refers to the row you tried to insert.</p><p>Use <span class="q">DO NOTHING</span> to silently skip duplicates. The conflict target must match a unique index or constraint, here <span class="q">customers.email</span>.</p>`,
+ task:"<b>Exercise:</b> Upsert <code>Ana Torres</code> / <code>ana@gmail.com</code> with city <code>Portland</code>: if the email exists, update the city instead of failing. Return <code>name</code> and <code>city</code>.",
+ ref:"INSERT INTO t (k, v) VALUES ('a', 1)\nON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v\nRETURNING *;\n\nON CONFLICT (k) DO NOTHING",
+ tables:["customers"],
+ starter:"INSERT INTO customers (name, email, city)\nVALUES ('Ana Torres', 'ana@gmail.com', 'Portland')\nRETURNING name, city;",
+ solution:"INSERT INTO customers (name, email, city)\nVALUES ('Ana Torres', 'ana@gmail.com', 'Portland')\nON CONFLICT (email) DO UPDATE SET city = EXCLUDED.city\nRETURNING name, city;",
+ verify:"SELECT count(*) AS customers,\n       max(city) FILTER (WHERE email = 'ana@gmail.com') AS ana_city\nFROM customers"},
+
+{nav:"UPDATE … FROM", section:"Writing data", title:"UPDATE … FROM",
+ sub:"Update rows based on a join with another table.",
+ prose:`<p>Postgres lets an UPDATE join other tables: <span class="q">UPDATE orders o SET … FROM customers c WHERE c.id = o.customer_id AND …</span><span class="pgonly">pg</span>. The <span class="q">FROM</span> table supplies the join and the filter. The DELETE equivalent is <span class="q">DELETE FROM t USING other WHERE …</span>.</p><p>Add <span class="q">RETURNING</span> so you can see which rows changed.</p>`,
+ task:"<b>Exercise:</b> Mark every <code>pending</code> order belonging to a <code>vip</code>-tagged customer as <code>shipped</code>. Return the updated order ids.",
+ ref:"UPDATE orders o\nSET status = 'shipped'\nFROM customers c\nWHERE c.id = o.customer_id\n  AND …\nRETURNING o.id;",
+ tables:["orders","customers"],
+ starter:"UPDATE orders o\nSET status = 'shipped'\nFROM customers c\nWHERE c.id = o.customer_id\nRETURNING o.id;",
+ solution:"UPDATE orders o\nSET status = 'shipped'\nFROM customers c\nWHERE c.id = o.customer_id\n  AND 'vip' = ANY(c.tags)\n  AND o.status = 'pending'\nRETURNING o.id;",
+ verify:"SELECT status, count(*) FROM orders GROUP BY status ORDER BY status"},
+
+{nav:"Indexes & EXPLAIN", section:"Writing data", title:"Expression indexes & EXPLAIN",
+ sub:"Index the expression your queries actually use.",
+ prose:`<p>An index on <span class="q">email</span> can't help a query that filters on <span class="q">lower(email) = …</span>. An <em>expression index</em><span class="pgonly">pg</span> on <span class="q">(lower(email))</span> can. Make it <span class="q">UNIQUE</span> and it also stops <code>Ana@x.com</code> and <code>ana@x.com</code> from both being inserted.</p><p>Related tools: <span class="q">CREATE INDEX … WHERE status = 'pending'</span> builds a <em>partial</em> index, and <span class="q">EXPLAIN SELECT …</span> shows the plan Postgres chose. Try EXPLAIN here. On tables this small, a sequential scan always wins.</p>`,
+ task:"<b>Exercise:</b> Create a <b>unique</b> index on customers that makes emails unique regardless of case.",
+ ref:"CREATE INDEX name ON t (col);\nCREATE UNIQUE INDEX name ON t (lower(col));\nCREATE INDEX name ON t (col) WHERE status = 'pending';\nCREATE INDEX name ON t USING gin (attrs);\nEXPLAIN SELECT …;",
+ tables:["customers"],
+ starter:"CREATE INDEX customers_email_idx ON customers (email);",
+ solution:"CREATE UNIQUE INDEX customers_email_lower_idx ON customers (lower(email));",
+ verify:"SELECT count(*) AS case_insensitive_unique_indexes\nFROM pg_indexes\nWHERE tablename = 'customers'\n  AND indexdef ILIKE 'CREATE UNIQUE INDEX%lower(email)%'"},
+];
+/*LESSONS-END*/
+
+// ───────── value normalization (shared by display and checker)
+const pad=n=>String(n).padStart(2,'0');
+function fmt(v){
+  if(v===null||v===undefined) return null;
+  if(v instanceof Date){
+    if(isNaN(v)) return String(v);
+    const d=`${v.getUTCFullYear()}-${pad(v.getUTCMonth()+1)}-${pad(v.getUTCDate())}`;
+    const t=`${pad(v.getUTCHours())}:${pad(v.getUTCMinutes())}:${pad(v.getUTCSeconds())}`;
+    return t==='00:00:00'?d:`${d} ${t}`;
+  }
+  if(typeof v==='bigint') return v.toString();
+  if(typeof v==='number') return Number.isInteger(v)?String(v):String(Math.round(v*1e4)/1e4);
+  if(Array.isArray(v)) return '{'+v.map(x=>{const s=fmt(x);return s===null?'NULL':s;}).join(',')+'}';
+  if(typeof v==='object') return JSON.stringify(v);
+  if(typeof v==='string'&&/^-?\d+\.\d+$/.test(v)) return String(Math.round(Number(v)*1e4)/1e4);
+  return String(v);
+}
+function lastResult(results){
+  for(let i=results.length-1;i>=0;i--) if(results[i].fields&&results[i].fields.length) return results[i];
+  return results.length?results[results.length-1]:{rows:[],fields:[]};
+}
+function toMatrix(res){
+  const names=(res.fields||[]).map(f=>f.name);
+  return {names,rows:(res.rows||[]).map(r=>Array.isArray(r)?r.map(fmt):names.map(n=>fmt(r[n])))};
+}
+
+// ───────── engine
+let db, cur=0, ready=false, busy=false;
+const expectedCache={};
+const TABLE_INFO={};
+const STORE='pgbolt-done';
+let done=[];try{done=JSON.parse(localStorage.getItem(STORE)||'[]');}catch(e){done=[];}
+const saveDone=()=>{try{localStorage.setItem(STORE,JSON.stringify(done));}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function freshRun(sql, verify){
+  try{await db.exec('ROLLBACK');}catch(e){}
+  await db.exec(SEED);
+  const results=await db.exec(sql,{rowMode:'array'});
+  const main=lastResult(results);
+  let v=null;
+  if(verify) v=toMatrix(lastResult(await db.exec(verify,{rowMode:'array'})));
+  return {main:toMatrix(main), affected:main.affectedRows, verify:v};
+}
+async function expected(i){
+  if(!expectedCache[i]){const l=LESSONS[i];expectedCache[i]=await freshRun(l.solution,l.verify);}
+  return expectedCache[i];
+}
+function sameMatrix(a,b,ordered){
+  if(a.names.length!==b.names.length) return false;
+  if(a.rows.length!==b.rows.length) return false;
+  const ka=a.rows.map(r=>JSON.stringify(r)), kb=b.rows.map(r=>JSON.stringify(r));
+  if(!ordered){ka.sort();kb.sort();}
+  return ka.every((k,i)=>k===kb[i]);
+}
+function diagnose(got,exp,ordered){
+  const g=got.main,e=exp.main;
+  if(g.names.length!==e.names.length) return `Expected ${e.names.length} column(s), you returned ${g.names.length}.`;
+  if(g.rows.length!==e.rows.length) return `Expected ${e.rows.length} row(s), you returned ${g.rows.length}.`;
+  if(ordered){
+    const ka=g.rows.map(r=>JSON.stringify(r)).sort().join(), kb=e.rows.map(r=>JSON.stringify(r)).sort().join();
+    if(ka===kb) return 'Right rows, wrong order. Check your ORDER BY.';
+  }
+  return 'Right shape, but some values differ. Compare your results with the task.';
+}
+
+// ───────── rendering
+function renderTable(el,m,types){
+  if(!m.names.length){el.innerHTML='';return;}
+  const head='<tr>'+m.names.map((n,i)=>`<th>${esc(n)}${types&&types[i]?`<small>${esc(types[i])}</small>`:''}</th>`).join('')+'</tr>';
+  const body=m.rows.length?m.rows.slice(0,200).map(r=>'<tr>'+r.map(c=>c===null?'<td class="null">NULL</td>':`<td>${esc(c)}</td>`).join('')+'</tr>').join('')
+    :`<tr><td class="null" colspan="${m.names.length}">(no rows)</td></tr>`;
+  el.innerHTML=head+body;
+}
+function renderSidebar(){
+  const sb=$('sidebar');sb.innerHTML='';let sec='';
+  LESSONS.forEach((l,i)=>{
+    if(l.section!==sec){sec=l.section;const h=document.createElement('h3');h.textContent=sec;sb.appendChild(h);}
+    const b=document.createElement('button');const isDone=done.includes(i+1);
+    b.className='lesson-link'+(i===cur?' active':'');b.type='button';
+    if(i===cur)b.setAttribute('aria-current','step');
+    b.innerHTML=`<span class="n">${pad(i+1)}</span><span>${esc(l.nav)}</span><span class="tick" aria-label="${isDone?'completed':''}">${isDone?'✓':''}</span>`;
+    b.onclick=()=>{go(i);};
+    sb.appendChild(b);
+  });
+}
+function renderTables(){
+  const l=LESSONS[cur];
+  if(!ready){$('tables').innerHTML='<p class="hint">Loading data…</p>';return;}
+  $('tables').innerHTML=l.tables.map(t=>`<div class="tname">${t}</div><table data-t="${t}"></table>`).join('');
+  l.tables.forEach(t=>renderTable($('tables').querySelector(`[data-t="${t}"]`),TABLE_INFO[t].m,TABLE_INFO[t].types));
+}
+function setFeedback(kind,text){const fb=$('feedback');fb.className='feedback'+(kind?' '+kind:'');fb.textContent=text||'';}
+function go(i){cur=i;try{localStorage.setItem('pgbolt-cur',String(i));}catch(e){}render();$('editor').focus({preventScroll:true});window.scrollTo({top:0});}
+function render(){
+  const l=LESSONS[cur];
+  $('lesson-title').textContent=`${cur+1}. ${l.title}`;
+  $('subtitle').textContent=l.sub;
+  $('prose').innerHTML=l.prose;
+  $('task').innerHTML=l.task+(l.ordered?' <span class="hint">(row order is checked)</span>':'');
+  $('ref').textContent=l.ref;
+  $('editor').value=l.starter;
+  setFeedback();
+  $('results').innerHTML='';$('count').textContent='';$('verify-wrap').style.display='none';
+  renderTables();renderSidebar();updateNext();
+}
+function updateNext(){
+  const n=$('next');n.classList.toggle('is-ready',done.includes(cur+1));
+  n.disabled=cur>=LESSONS.length-1;
+}
+
+async function onRun(){
+  if(!ready||busy) return;
+  busy=true;$('run').disabled=true;
+  const l=LESSONS[cur], sql=$('editor').value;
+  try{
+    const exp=await expected(cur);
+    let got;
+    try{got=await freshRun(sql,l.verify);}
+    catch(err){
+      $('results').innerHTML='';$('count').textContent='';$('verify-wrap').style.display='none';
+      let msg='ERROR: '+(err.message||err);
+      if(err.detail) msg+='\nDETAIL: '+err.detail;
+      if(err.hint) msg+='\nHINT: '+err.hint;
+      if(err.position){const p=Number(err.position);const pre=sql.slice(0,p-1);const line=pre.split('\n').length;msg+=`\n(at line ${line})`;}
+      setFeedback('pgerr',msg);return;
+    }
+    renderTable($('results'),got.main);
+    $('count').textContent=got.main.names.length?`${got.main.rows.length} row(s)`:(got.affected!=null?`OK, ${got.affected} row(s) affected`:'OK');
+    if(l.verify){$('verify-wrap').style.display='block';$('verify-sql').textContent=l.verify.replace(/\s+/g,' ');renderTable($('verify'),got.verify);}
+    const pass=sameMatrix(got.main,exp.main,l.ordered)&&(!l.verify||sameMatrix(got.verify,exp.verify,true));
+    if(pass){
+      setFeedback('ok',cur<LESSONS.length-1?'✓ Correct. On to the next lesson when you’re ready.':'✓ Correct. That’s the whole course. Nice work!');
+      if(!done.includes(cur+1)){done.push(cur+1);saveDone();}
+      renderSidebar();updateNext();
+    }else{
+      const why=sameMatrix(got.main,exp.main,l.ordered)?'Your result looks right, but the table ended up in a different state than expected. Check the table state below.':diagnose(got,exp,l.ordered);
+      setFeedback('err','Not quite. '+why);
+    }
+  }catch(err){setFeedback('pgerr','Internal error: '+(err.message||err));console.error(err);}
+  finally{busy=false;$('run').disabled=false;}
+}
+
+$('run').onclick=onRun;
+$('editor').addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();onRun();}
+  else if(e.key==='Tab'&&!e.shiftKey&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
+    e.preventDefault();const t=e.target,s=t.selectionStart;
+    t.setRangeText('  ',s,t.selectionEnd,'end');
+  }
+});
+$('reset').onclick=()=>{$('editor').value=LESSONS[cur].starter;setFeedback();$('editor').focus();};
+$('solution').onclick=()=>{$('editor').value=LESSONS[cur].solution;setFeedback();$('editor').focus();};
+$('next').onclick=()=>{if(cur<LESSONS.length-1)go(cur+1);};
+
+try{const s=parseInt(localStorage.getItem('pgbolt-cur')||'0',10);if(s>=0&&s<LESSONS.length)cur=s;}catch(e){}
+render();
+
+(async()=>{
+  try{
+    db=await PGlite.create();
+    await db.exec(SEED);
+    const ver=(await db.query('SHOW server_version')).rows[0].server_version;
+    const tables=[...new Set(LESSONS.flatMap(l=>l.tables))];
+    for(const t of tables){
+      const r=await db.query(`SELECT * FROM ${t} ORDER BY 1`,[],{rowMode:'array'});
+      const types=(await db.query(`SELECT format_type(atttypid, atttypmod) AS t FROM pg_attribute WHERE attrelid = $1::regclass AND attnum > 0 AND NOT attisdropped ORDER BY attnum`,[t])).rows.map(x=>x.t);
+      TABLE_INFO[t]={m:toMatrix(r),types};
+    }
+    ready=true;$('run').disabled=false;
+    $('dot').classList.add('ready');$('pg-status').textContent=`PostgreSQL ${ver.split(' ')[0]} • in your browser`;
+    renderTables();
+  }catch(err){
+    $('pg-status').textContent='PostgreSQL failed to load';
+    setFeedback('pgerr','Could not start the in-browser database: '+(err.message||err)+'\nCheck your connection and reload.');
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
